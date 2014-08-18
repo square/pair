@@ -1,10 +1,13 @@
-all: pair
+all: pair test
 
 clean:
 	rm -f pair
 
 pair: pair.go
 	@go fmt pair.go
-	go build pair.go
+	go build
 
-.PHONY: all clean
+test: pair.go pair_test.go
+	go test
+
+.PHONY: all clean test
