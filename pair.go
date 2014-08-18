@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -42,14 +44,23 @@ func main() {
 
 	if len(usernames) == 0 {
 		// $ pair
-		PrintCurrentPairedUsers(configFile)
+		if !PrintCurrentPairedUsers(configFile) {
+			os.Exit(1)
+		}
 	} else {
 		// $ pair author1 author2
-		SetAndPrintNewPairedUsers(configFile, usernames)
+		pairsFile := os.ExpandEnv("$PAIR_FILE")
+		if pairsFile == "" {
+			pairsFile = os.ExpandEnv("$HOME/.pairs")
+		}
+
+		if !SetAndPrintNewPairedUsers(pairsFile, configFile, usernames) {
+			os.Exit(1)
+		}
 	}
 }
 
-func PrintCurrentPairedUsers(configFile string) {
+func PrintCurrentPairedUsers(configFile string) bool {
 	var err error
 	var name string
 	var email string
@@ -57,32 +68,35 @@ func PrintCurrentPairedUsers(configFile string) {
 	name, err = GitConfig(configFile, "user.name")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: unable to get current git author name: %v\n", err)
-		os.Exit(1)
+		return false
 	}
 
 	email, err = GitConfig(configFile, "user.email")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: unable to get current git author email: %v\n", err)
-		os.Exit(1)
+		return false
 	}
 
 	fmt.Printf("%s <%s>\n", name, email)
+	return true
 }
 
-func SetAndPrintNewPairedUsers(configFile string, usernames []string) {
+func SetAndPrintNewPairedUsers(pairsFile string, configFile string, usernames []string) bool {
 	var err error
 	var name string
 	var email string
 
-	pairsFile := os.ExpandEnv("$PAIR_FILE")
-	if pairsFile == "" {
-		pairsFile = os.ExpandEnv("$HOME/.pairs")
+	f, err := os.Open(pairsFile)
+	var authorMap map[string]string
+	if err == nil {
+		authorMap, err = ReadAuthorsByUsername(bufio.NewReader(f))
 	}
-
-	authorMap, err := AuthorsByUsername(pairsFile)
+	if f != nil {
+		f.Close()
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: unable to read authors from file (%s): %v", pairsFile, err)
-		os.Exit(1)
+		return false
 	}
 
 	sort.Strings(usernames)
@@ -91,22 +105,22 @@ func SetAndPrintNewPairedUsers(configFile string, usernames []string) {
 	name, err = NamesForUsernames(usernames, authorMap)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
+		return false
 	}
 
 	err = SetGitConfig(configFile, "user.name", name)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: unable to set current git author name: %v\n", err)
-		os.Exit(1)
+		return false
 	}
 
 	err = SetGitConfig(configFile, "user.email", email)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: unable to set current git author name: %v\n", err)
-		os.Exit(1)
+		return false
 	}
 
-	PrintCurrentPairedUsers(configFile)
+	return PrintCurrentPairedUsers(configFile)
 }
 
 // GitConfig retrieves the value of a property from a specific git config file.
@@ -129,12 +143,12 @@ func SetGitConfig(configFile string, property string, value string) error {
 	return cmd.Run()
 }
 
-// AuthorsByUsername gets a map of username -> full name for possible git authors.
+// ReadAuthorsByUsername gets a map of username -> full name for possible git authors.
 // pairsFile should be a path to a file containing a YAML map.
-func AuthorsByUsername(pairsFile string) (map[string]string, error) {
+func ReadAuthorsByUsername(pairs io.Reader) (map[string]string, error) {
 	var authorMap map[string]string
 
-	bytes, err := ioutil.ReadFile(pairsFile)
+	bytes, err := ioutil.ReadAll(pairs)
 	if err != nil {
 		return nil, err
 	}
