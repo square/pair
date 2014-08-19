@@ -15,7 +15,11 @@ import (
 	"gopkg.in/yaml.v1"
 )
 
+var branch string
+
 func init() {
+	flag.StringVar(&branch, "b", "", "switch to this branch prefixed with the current pair authors")
+
 	flag.Usage = func() {
 		fmt.Println("pair USER1 [USER2 [...]]")
 		fmt.Println("pair [OPTIONS]")
@@ -23,6 +27,10 @@ func init() {
 		fmt.Println("Configures your git author and committer info by changing ~/.gitconfig_local.")
 		fmt.Println("This is meant to be used both as a means of adding multiple authors to a commit")
 		fmt.Println("and an alternative to editing your ~/.git_config (which is checked into git).")
+		fmt.Println("")
+		fmt.Println("Options")
+		fmt.Println("")
+		fmt.Println("  -b BRANCH     Switches to a git branch prefixed with the paired usernames.")
 		fmt.Println("")
 		fmt.Println("Examples")
 		fmt.Println("")
@@ -33,6 +41,10 @@ func init() {
 		fmt.Println("  # use the same author info as the last time pair was run")
 		fmt.Println("  $ pair")
 		fmt.Println("  Alice Barns and Jon Smith <git+alice+jsmith@squareup.com>")
+		fmt.Println("")
+		fmt.Println("  # create a branch to work on a feature")
+		fmt.Println("  $ pair -b ONCALL-843")
+		fmt.Println("  Switched to a new branch 'alice+jsmith/ONCALL-843'")
 	}
 }
 
@@ -47,6 +59,14 @@ func main() {
 	emailTemplate := os.ExpandEnv("$PAIR_EMAIL")
 	if emailTemplate == "" {
 		emailTemplate = "git@squareup.com"
+	}
+
+	if branch != "" {
+		if SwitchToPairBranch(configFile, branch, emailTemplate) {
+			os.Exit(0)
+		} else {
+			os.Exit(1)
+		}
 	}
 
 	usernames := flag.Args()
@@ -136,6 +156,68 @@ func SetAndPrintNewPairedUsers(pairsFile string, configFile string, emailTemplat
 	return PrintCurrentPairedUsers(configFile)
 }
 
+func SwitchToPairBranch(configFile string, branch string, emailTemplate string) bool {
+	email, err := GitConfig(configFile, "user.email")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: unable to get current git author email from config file: %s\n", configFile)
+		return false
+	}
+
+	templateUsername, _, err := SplitEmail(emailTemplate)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: unable to parse template email address: %s\n", emailTemplate)
+		return false
+	}
+
+	usernames, _, err := SplitEmail(email)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: unable to parse email address: %s\n", email)
+		return false
+	}
+
+	// Remove any preceding e.g. "git+" from "git+lb+mb".
+	usernames = strings.TrimPrefix(usernames, templateUsername+"+")
+
+	fullBranch := usernames + "/" + branch
+
+	var cmd *exec.Cmd
+	cmd = exec.Command("git", "rev-parse", fullBranch)
+	err = cmd.Run()
+
+	args := []string{"checkout"}
+
+	if err != nil {
+		// The branch does not exist, so create it with the `-b' flag.
+		args = append(args, "-b", fullBranch, "master")
+	} else {
+		// The branch already exists, so just switch to it.
+		args = append(args, fullBranch)
+	}
+
+	cmd = exec.Command("git", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err = cmd.Run()
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: unable to check out git branch: %s\n", fullBranch)
+		return false
+	}
+
+	return true
+}
+
+// SplitEmail splits an email address into the username and the host.
+// An error is returned if the email does not contain a "@" character.
+func SplitEmail(email string) (string, string, error) {
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 {
+		return "", "", errors.New("invalid email address: " + email)
+	} else {
+		return parts[0], parts[1], nil
+	}
+}
+
 // GitConfig retrieves the value of a property from a specific git config file.
 // It returns the value as a string along with any error that occurred.
 func GitConfig(configFile string, property string) (string, error) {
@@ -180,12 +262,9 @@ func EmailAddressForUsernames(emailTemplate string, usernames []string) (string,
 	var user string
 	var host string
 
-	parts := strings.Split(emailTemplate, "@")
-	if len(parts) != 2 {
-		return "", errors.New("invalid email template: " + emailTemplate)
-	} else {
-		user = parts[0]
-		host = parts[1]
+	user, host, err := SplitEmail(emailTemplate)
+	if err != nil {
+		return "", err
 	}
 
 	switch len(usernames) {

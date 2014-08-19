@@ -89,6 +89,26 @@ func TestReadAuthorsByUsername(t *testing.T) {
 	}
 }
 
+func ExampleSplitEmail() {
+	var user string
+	var host string
+	var err error
+
+	user, host, err = SplitEmail("a@b.com")
+	fmt.Printf("error=%v user=%s host=%s\n", err, user, host)
+
+	user, host, err = SplitEmail("")
+	fmt.Printf("error=%v user=%s host=%s\n", err, user, host)
+
+	user, host, err = SplitEmail("a@b@c")
+	fmt.Printf("error=%v user=%s host=%s\n", err, user, host)
+
+	// Output:
+	// error=<nil> user=a host=b.com
+	// error=invalid email address:  user= host=
+	// error=invalid email address: a@b@c user= host=
+}
+
 func TestGitConfig(t *testing.T) {
 	var err error
 	var tempGitConfigFile *os.File
