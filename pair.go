@@ -157,7 +157,7 @@ func SetGitConfig(configFile string, property string, value string) error {
 }
 
 // ReadAuthorsByUsername gets a map of username -> full name for possible git authors.
-// pairsFile should be a path to a file containing a YAML map.
+// pairs should be reader open to data containing a YAML map.
 func ReadAuthorsByUsername(pairs io.Reader) (map[string]string, error) {
 	var authorMap map[string]string
 
