@@ -39,7 +39,16 @@ func init() {
 func main() {
 	flag.Parse()
 
-	configFile := os.ExpandEnv("$HOME/.gitconfig_local")
+	configFile := os.ExpandEnv("$PAIR_GIT_CONFIG")
+	if configFile == "" {
+		configFile = os.ExpandEnv("$HOME/.gitconfig_local")
+	}
+
+	emailTemplate := os.ExpandEnv("$PAIR_EMAIL")
+	if emailTemplate == "" {
+		emailTemplate = "git@squareup.com"
+	}
+
 	usernames := flag.Args()
 
 	if len(usernames) == 0 {
@@ -54,7 +63,7 @@ func main() {
 			pairsFile = os.ExpandEnv("$HOME/.pairs")
 		}
 
-		if !SetAndPrintNewPairedUsers(pairsFile, configFile, usernames) {
+		if !SetAndPrintNewPairedUsers(pairsFile, configFile, emailTemplate, usernames) {
 			os.Exit(1)
 		}
 	}
@@ -81,7 +90,7 @@ func PrintCurrentPairedUsers(configFile string) bool {
 	return true
 }
 
-func SetAndPrintNewPairedUsers(pairsFile string, configFile string, usernames []string) bool {
+func SetAndPrintNewPairedUsers(pairsFile string, configFile string, emailTemplate string, usernames []string) bool {
 	var err error
 	var name string
 	var email string
@@ -101,8 +110,12 @@ func SetAndPrintNewPairedUsers(pairsFile string, configFile string, usernames []
 
 	sort.Strings(usernames)
 
-	email = EmailAddressForUsernames(usernames)
-	name, err = NamesForUsernames(usernames, authorMap)
+	email, err = EmailAddressForUsernames(emailTemplate, usernames)
+
+	if err == nil {
+		name, err = NamesForUsernames(usernames, authorMap)
+	}
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return false
@@ -163,14 +176,25 @@ func ReadAuthorsByUsername(pairs io.Reader) (map[string]string, error) {
 
 // EmailAddressForUsernames generates an email address from a list of usernames.
 // For example, given "michael" and "lindsay" returns "michael+lindsay".
-func EmailAddressForUsernames(usernames []string) string {
+func EmailAddressForUsernames(emailTemplate string, usernames []string) (string, error) {
+	var user string
+	var host string
+
+	parts := strings.Split(emailTemplate, "@")
+	if len(parts) != 2 {
+		return "", errors.New("invalid email template: " + emailTemplate)
+	} else {
+		user = parts[0]
+		host = parts[1]
+	}
+
 	switch len(usernames) {
 	case 0:
-		return ""
+		return emailTemplate, nil
 	case 1:
-		return fmt.Sprintf("%s@squareup.com", usernames[0])
+		return fmt.Sprintf("%s@%s", usernames[0], host), nil
 	default:
-		return fmt.Sprintf("git+%s@squareup.com", strings.Join(usernames, "+"))
+		return fmt.Sprintf("%s+%s@%s", user, strings.Join(usernames, "+"), host), nil
 	}
 }
 

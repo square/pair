@@ -44,23 +44,20 @@ func TestNamesForUsernames(t *testing.T) {
 	}
 }
 
-func TestEmailAddressForUsernames(t *testing.T) {
+func ExampleEmailAddressForUsernames() {
 	var email string
 
-	email = EmailAddressForUsernames([]string{})
-	if email != "" {
-		t.Fatalf("expected empty string for empty list of usernames, got %s", email)
-	}
+	email, _ = EmailAddressForUsernames("git@example.com", []string{})
+	fmt.Println(email)
+	email, _ = EmailAddressForUsernames("git@example.com", []string{"mb"})
+	fmt.Println(email)
+	email, _ = EmailAddressForUsernames("git@example.com", []string{"lb", "mb"})
+	fmt.Println(email)
 
-	email = EmailAddressForUsernames([]string{"mb"})
-	if email != "mb@squareup.com" {
-		t.Fatalf("expected non-paired email for a single username, got %s", email)
-	}
-
-	email = EmailAddressForUsernames([]string{"lb", "mb"})
-	if email != "git+lb+mb@squareup.com" {
-		t.Fatalf("expected paired email for multiple usernames, got %s", email)
-	}
+	// Output:
+	// git@example.com
+	// mb@example.com
+	// git+lb+mb@example.com
 }
 
 func TestReadAuthorsByUsername(t *testing.T) {
@@ -160,7 +157,7 @@ func ExampleSetAndPrintNewPairedUsers() {
 		log.Fatal("unable to create temporary git config")
 	}
 
-	SetAndPrintNewPairedUsers(tempPairsFile.Name(), tempGitConfigFile.Name(), []string{"mb"})
+	SetAndPrintNewPairedUsers(tempPairsFile.Name(), tempGitConfigFile.Name(), "git@example.com", []string{"mb"})
 
 	var value string
 	value, err = GitConfig(tempGitConfigFile.Name(), "user.name")
@@ -176,7 +173,7 @@ func ExampleSetAndPrintNewPairedUsers() {
 	fmt.Printf("user.email=%s\n", value)
 
 	// Output:
-	// Michael Bluth <mb@squareup.com>
+	// Michael Bluth <mb@example.com>
 	// user.name=Michael Bluth
-	// user.email=mb@squareup.com
+	// user.email=mb@example.com
 }
