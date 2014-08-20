@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"sort"
@@ -36,15 +37,27 @@ func init() {
 		fmt.Println("")
 		fmt.Println("  # configure paired git author info for this shell")
 		fmt.Println("  $ pair jsmith alice")
-		fmt.Println("  Alice Barns and Jon Smith <git+alice+jsmith@squareup.com>")
+		fmt.Println("  Alice Barns and Jon Smith <git+alice+jsmith@example.com>")
 		fmt.Println("")
 		fmt.Println("  # use the same author info as the last time pair was run")
 		fmt.Println("  $ pair")
-		fmt.Println("  Alice Barns and Jon Smith <git+alice+jsmith@squareup.com>")
+		fmt.Println("  Alice Barns and Jon Smith <git+alice+jsmith@example.com>")
 		fmt.Println("")
 		fmt.Println("  # create a branch to work on a feature")
 		fmt.Println("  $ pair -b ONCALL-843")
 		fmt.Println("  Switched to a new branch 'alice+jsmith/ONCALL-843'")
+		fmt.Println("")
+		fmt.Println("Configuration")
+		fmt.Println("")
+		fmt.Println("  PAIR_FILE        YAML file with a map of usernames to full names (default: ~/.pairs).")
+		fmt.Println("  PAIR_GIT_CONFIG  Git config file for reading and writing author info (default: ~/.gitconfig).")
+
+		defaultEmailTemplate, err := GetDefaultEmailTemplate()
+		if err == nil {
+			defaultEmailTemplate = " (default: " + defaultEmailTemplate + ")"
+		}
+
+		fmt.Println("  PAIR_EMAIL       Email address to base derived email addresses on" + defaultEmailTemplate + ".")
 	}
 }
 
@@ -58,7 +71,12 @@ func main() {
 
 	emailTemplate := os.ExpandEnv("$PAIR_EMAIL")
 	if emailTemplate == "" {
-		emailTemplate = "git@squareup.com"
+		var err error
+		emailTemplate, err = GetDefaultEmailTemplate()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error: please set $PAIR_EMAIL to configure the pair email template")
+			os.Exit(1)
+		}
 	}
 
 	if branch != "" {
@@ -205,6 +223,49 @@ func SwitchToPairBranch(configFile string, branch string, emailTemplate string) 
 	}
 
 	return true
+}
+
+// GetDefaultEmailTemplate determines a default email template from the current network.
+func GetDefaultEmailTemplate() (string, error) {
+	dnsNames, err := LookupReverseDNSNamesByInterface("en0")
+	if err != nil {
+		return "", err
+	}
+
+	for _, dnsName := range dnsNames {
+		hostnameParts := strings.Split(dnsName, ".")
+		if len(hostnameParts) >= 3 {
+			return "git@" + strings.Join(hostnameParts[len(hostnameParts)-3:len(hostnameParts)-1], "."), nil
+		}
+	}
+
+	return "", errors.New("expected a hostname to be a fully-qualified domain name: " + strings.Join(dnsNames, ","))
+}
+
+// LookupReverseDNSNamesByInterface finds the DNS names for the given network interface (e.g. "en0").
+func LookupReverseDNSNamesByInterface(interfaceName string) ([]string, error) {
+	iface, err := net.InterfaceByName(interfaceName)
+	if err != nil {
+		return nil, err
+	}
+
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, addr := range addrs {
+		cidr := addr.String()
+		ip, _, err := net.ParseCIDR(cidr)
+		if err == nil {
+			names, err := net.LookupAddr(ip.String())
+			if err == nil && len(names) > 0 {
+				return names, nil
+			}
+		}
+	}
+
+	return nil, nil
 }
 
 // SplitEmail splits an email address into the username and the host.

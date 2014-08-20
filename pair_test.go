@@ -149,7 +149,7 @@ func ExamplePrintCurrentPairedUsers() {
 		log.Fatalf("expected no error when setting git config, got %v", err)
 	}
 
-	err = SetGitConfig(tempGitConfigPath, "user.email", "mb@squareup.com")
+	err = SetGitConfig(tempGitConfigPath, "user.email", "mb@example.com")
 	if err != nil {
 		log.Fatalf("expected no error when setting git config, got %v", err)
 	}
@@ -157,7 +157,7 @@ func ExamplePrintCurrentPairedUsers() {
 	PrintCurrentPairedUsers(tempGitConfigPath)
 
 	// Output:
-	// Michael Bluth <mb@squareup.com>
+	// Michael Bluth <mb@example.com>
 }
 
 func ExampleSetAndPrintNewPairedUsers() {

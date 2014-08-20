@@ -12,14 +12,18 @@ pre-built binary for OS X and put that somewhere in your `$PATH`.
 ```
 # Print the current git author.
 $ pair
-Michael Bluth <mb@squareup.com>
+Michael Bluth <mb@example.com>
 
 # Set the current git author from users in the pairs file.
 $ pair mb lb
-Lindsay Bluth and Michael Bluth <git+lb+mb@squareup.com>
+Lindsay Bluth and Michael Bluth <git+lb+mb@example.com>
 
 # Set the current git author according to your user, perhaps useful in .bashrc.
 $ pair $USER
+
+# create a branch to work on a feature
+$ pair -b ONCALL-843
+Switched to a new branch 'alice+jsmith/ONCALL-843'
 ```
 
 ## Configuration
@@ -56,4 +60,4 @@ $ pair lb mb
 Lindsay Bluth and Michael Bluth <git+lb+mb@example.com>
 ```
 
-The default value for this template is `git@squareup.com`.
+The default value for this template is determined by your network settings for en0.
