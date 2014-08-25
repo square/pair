@@ -16,11 +16,9 @@ import (
 	"gopkg.in/yaml.v1"
 )
 
-var branch string
+var branch = flag.String("b", "", "switch to this branch prefixed with the current pair authors")
 
 func init() {
-	flag.StringVar(&branch, "b", "", "switch to this branch prefixed with the current pair authors")
-
 	flag.Usage = func() {
 		fmt.Println("pair USER1 [USER2 [...]]")
 		fmt.Println("pair [OPTIONS]")
@@ -79,8 +77,8 @@ func main() {
 		}
 	}
 
-	if branch != "" {
-		if SwitchToPairBranch(configFile, branch, emailTemplate) {
+	if *branch != "" {
+		if SwitchToPairBranch(configFile, *branch, emailTemplate) {
 			os.Exit(0)
 		} else {
 			os.Exit(1)
