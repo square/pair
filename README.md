@@ -50,7 +50,8 @@ setting and getting author info. The default location for this file is
 
 ### `PAIR_EMAIL`
 
-Set `PAIR_EMAIL` to an email address to use as the base for all derived emails. For example,
+Set `PAIR_EMAIL` to an email address to use as the base for all derived emails.
+For example,
 
 ```
 $ export PAIR_EMAIL=git@example.com
@@ -61,3 +62,20 @@ Lindsay Bluth and Michael Bluth <git+lb+mb@example.com>
 ```
 
 The default value for this template is determined by your network settings for en0.
+
+## Development
+
+First, ensure you have all the required dependencies:
+
+```
+$ go get gopkg.in/yaml.v1
+```
+
+Then, use `go build` and `go test` as normal to build the `pair` binary and run
+tests.
+
+### Contributing
+
+1. Create a branch for your bugfix/feature.
+1. Commit to your branch, ensuring you add tests to cover the bug/feature.
+1. Create a Pull Request with a thorough description of the bug/feature.
