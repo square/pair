@@ -154,7 +154,7 @@ func ExamplePrintCurrentPairedUsers() {
 		log.Fatalf("expected no error when setting git config, got %v", err)
 	}
 
-	PrintCurrentPairedUsers(tempGitConfigPath)
+	printCurrentPairedUsers(tempGitConfigPath)
 
 	// Output:
 	// Michael Bluth <mb@example.com>
@@ -177,7 +177,7 @@ func ExampleSetAndPrintNewPairedUsers() {
 		log.Fatal("unable to create temporary git config")
 	}
 
-	SetAndPrintNewPairedUsers(tempPairsFile.Name(), tempGitConfigFile.Name(), "git@example.com", []string{"mb"})
+	setAndPrintNewPairedUsers(tempPairsFile.Name(), tempGitConfigFile.Name(), "git@example.com", []string{"mb"})
 
 	var value string
 	value, err = GitConfig(tempGitConfigFile.Name(), "user.name")

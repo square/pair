@@ -78,7 +78,7 @@ func main() {
 	}
 
 	if *branch != "" {
-		if SwitchToPairBranch(configFile, *branch, emailTemplate) {
+		if switchToPairBranch(configFile, *branch, emailTemplate) {
 			os.Exit(0)
 		} else {
 			os.Exit(1)
@@ -89,7 +89,7 @@ func main() {
 
 	if len(usernames) == 0 {
 		// $ pair
-		if !PrintCurrentPairedUsers(configFile) {
+		if !printCurrentPairedUsers(configFile) {
 			os.Exit(1)
 		}
 	} else {
@@ -99,13 +99,13 @@ func main() {
 			pairsFile = os.ExpandEnv("$HOME/.pairs")
 		}
 
-		if !SetAndPrintNewPairedUsers(pairsFile, configFile, emailTemplate, usernames) {
+		if !setAndPrintNewPairedUsers(pairsFile, configFile, emailTemplate, usernames) {
 			os.Exit(1)
 		}
 	}
 }
 
-func PrintCurrentPairedUsers(configFile string) bool {
+func printCurrentPairedUsers(configFile string) bool {
 	var err error
 	var name string
 	var email string
@@ -126,7 +126,7 @@ func PrintCurrentPairedUsers(configFile string) bool {
 	return true
 }
 
-func SetAndPrintNewPairedUsers(pairsFile string, configFile string, emailTemplate string, usernames []string) bool {
+func setAndPrintNewPairedUsers(pairsFile string, configFile string, emailTemplate string, usernames []string) bool {
 	var err error
 	var name string
 	var email string
@@ -169,10 +169,10 @@ func SetAndPrintNewPairedUsers(pairsFile string, configFile string, emailTemplat
 		return false
 	}
 
-	return PrintCurrentPairedUsers(configFile)
+	return printCurrentPairedUsers(configFile)
 }
 
-func SwitchToPairBranch(configFile string, branch string, emailTemplate string) bool {
+func switchToPairBranch(configFile string, branch string, emailTemplate string) bool {
 	email, err := GitConfig(configFile, "user.email")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: unable to get current git author email from config file: %s\n", configFile)
@@ -272,9 +272,8 @@ func SplitEmail(email string) (string, string, error) {
 	parts := strings.Split(email, "@")
 	if len(parts) != 2 {
 		return "", "", errors.New("invalid email address: " + email)
-	} else {
-		return parts[0], parts[1], nil
 	}
+	return parts[0], parts[1], nil
 }
 
 // GitConfig retrieves the value of a property from a specific git config file.
