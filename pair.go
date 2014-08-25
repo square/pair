@@ -18,49 +18,8 @@ import (
 
 var branch = flag.String("b", "", "switch to this branch prefixed with the current pair authors")
 
-func init() {
-	flag.Usage = func() {
-		fmt.Println(
-			`pair USER1 [USER2 [...]]
-pair [OPTIONS]
-
-Configures your git author and committer info by changing ~/.gitconfig_local.
-This is meant to be used both as a means of adding multiple authors to a commit
-and an alternative to editing your ~/.git_config (which is checked into git).
-
-Options
-
-  -b BRANCH     Switches to a git branch prefixed with the paired usernames.
-
-Examples
-
-  # configure paired git author info for this shell
-  $ pair jsmith alice
-  Alice Barns and Jon Smith <git+alice+jsmith@example.com>
-
-  # use the same author info as the last time pair was run
-  $ pair
-  Alice Barns and Jon Smith <git+alice+jsmith@example.com>
-
-  # create a branch to work on a feature
-  $ pair -b ONCALL-843
-  Switched to a new branch 'alice+jsmith/ONCALL-843'
-
-Configuration
-
-  PAIR_FILE        YAML file with a map of usernames to full names (default: ~/.pairs).
-  PAIR_GIT_CONFIG  Git config file for reading and writing author info (default: ~/.gitconfig).`)
-
-		defaultEmailTemplate, err := GetDefaultEmailTemplate()
-		if err == nil {
-			defaultEmailTemplate = " (default: " + defaultEmailTemplate + ")"
-		}
-
-		fmt.Println("  PAIR_EMAIL       Email address to base derived email addresses on" + defaultEmailTemplate + ".")
-	}
-}
-
 func main() {
+	flag.Usage = usage
 	flag.Parse()
 
 	configFile := os.ExpandEnv("$PAIR_GIT_CONFIG")
@@ -106,18 +65,54 @@ func main() {
 	}
 }
 
-func printCurrentPairedUsers(configFile string) bool {
-	var err error
-	var name string
-	var email string
+func usage() {
+	fmt.Println(
+		`pair USER1 [USER2 [...]]
+pair [OPTIONS]
 
-	name, err = GitConfig(configFile, "user.name")
+Configures your git author and committer info by changing ~/.gitconfig_local.
+This is meant to be used both as a means of adding multiple authors to a commit
+and an alternative to editing your ~/.git_config (which is checked into git).
+
+Options
+
+  -b BRANCH     Switches to a git branch prefixed with the paired usernames.
+
+Examples
+
+  # configure paired git author info for this shell
+  $ pair jsmith alice
+  Alice Barns and Jon Smith <git+alice+jsmith@example.com>
+
+  # use the same author info as the last time pair was run
+  $ pair
+  Alice Barns and Jon Smith <git+alice+jsmith@example.com>
+
+  # create a branch to work on a feature
+  $ pair -b ONCALL-843
+  Switched to a new branch 'alice+jsmith/ONCALL-843'
+
+Configuration
+
+  PAIR_FILE        YAML file with a map of usernames to full names (default: ~/.pairs).
+  PAIR_GIT_CONFIG  Git config file for reading and writing author info (default: ~/.gitconfig).`)
+
+	defaultEmailTemplate, err := GetDefaultEmailTemplate()
+	if err == nil {
+		defaultEmailTemplate = " (default: " + defaultEmailTemplate + ")"
+	}
+
+	fmt.Println("  PAIR_EMAIL       Email address to base derived email addresses on" + defaultEmailTemplate + ".")
+}
+
+func printCurrentPairedUsers(configFile string) bool {
+	name, err := gitConfig(configFile, "user.name")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: unable to get current git author name: %v\n", err)
 		return false
 	}
 
-	email, err = GitConfig(configFile, "user.email")
+	email, err := gitConfig(configFile, "user.email")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: unable to get current git author email: %v\n", err)
 		return false
@@ -128,14 +123,10 @@ func printCurrentPairedUsers(configFile string) bool {
 }
 
 func setAndPrintNewPairedUsers(pairsFile string, configFile string, emailTemplate string, usernames []string) bool {
-	var err error
-	var name string
-	var email string
-
 	f, err := os.Open(pairsFile)
 	var authorMap map[string]string
 	if err == nil {
-		authorMap, err = ReadAuthorsByUsername(bufio.NewReader(f))
+		authorMap, err = readAuthorsByUsername(bufio.NewReader(f))
 	}
 	if f != nil {
 		f.Close()
@@ -147,10 +138,12 @@ func setAndPrintNewPairedUsers(pairsFile string, configFile string, emailTemplat
 
 	sort.Strings(usernames)
 
-	email, err = EmailAddressForUsernames(emailTemplate, usernames)
+	email, err := emailAddressForUsernames(emailTemplate, usernames)
+
+	var name string
 
 	if err == nil {
-		name, err = NamesForUsernames(usernames, authorMap)
+		name, err = namesForUsernames(usernames, authorMap)
 	}
 
 	if err != nil {
@@ -158,13 +151,13 @@ func setAndPrintNewPairedUsers(pairsFile string, configFile string, emailTemplat
 		return false
 	}
 
-	err = SetGitConfig(configFile, "user.name", name)
+	err = setGitConfig(configFile, "user.name", name)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: unable to set current git author name: %v\n", err)
 		return false
 	}
 
-	err = SetGitConfig(configFile, "user.email", email)
+	err = setGitConfig(configFile, "user.email", email)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: unable to set current git author name: %v\n", err)
 		return false
@@ -174,7 +167,7 @@ func setAndPrintNewPairedUsers(pairsFile string, configFile string, emailTemplat
 }
 
 func switchToPairBranch(configFile string, branch string, emailTemplate string) bool {
-	email, err := GitConfig(configFile, "user.email")
+	email, err := gitConfig(configFile, "user.email")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: unable to get current git author email from config file: %s\n", configFile)
 		return false
@@ -197,8 +190,7 @@ func switchToPairBranch(configFile string, branch string, emailTemplate string) 
 
 	fullBranch := usernames + "/" + branch
 
-	var cmd *exec.Cmd
-	cmd = exec.Command("git", "rev-parse", fullBranch)
+	cmd := exec.Command("git", "rev-parse", fullBranch)
 	err = cmd.Run()
 
 	args := []string{"checkout"}
@@ -277,9 +269,9 @@ func SplitEmail(email string) (string, string, error) {
 	return parts[0], parts[1], nil
 }
 
-// GitConfig retrieves the value of a property from a specific git config file.
+// gitConfig retrieves the value of a property from a specific git config file.
 // It returns the value as a string along with any error that occurred.
-func GitConfig(configFile string, property string) (string, error) {
+func gitConfig(configFile string, property string) (string, error) {
 	cmd := exec.Command("git", "config", "--file", configFile, property)
 
 	output, err := cmd.Output()
@@ -290,16 +282,16 @@ func GitConfig(configFile string, property string) (string, error) {
 	return strings.TrimRight(string(output), "\r\n"), nil
 }
 
-// SetGitConfig sets the value of a property within a specific git config file.
+// setGitConfig sets the value of a property within a specific git config file.
 // It returns any error that occurred.
-func SetGitConfig(configFile string, property string, value string) error {
+func setGitConfig(configFile string, property string, value string) error {
 	cmd := exec.Command("git", "config", "--file", configFile, property, value)
 	return cmd.Run()
 }
 
-// ReadAuthorsByUsername gets a map of username -> full name for possible git authors.
+// readAuthorsByUsername gets a map of username -> full name for possible git authors.
 // pairs should be reader open to data containing a YAML map.
-func ReadAuthorsByUsername(pairs io.Reader) (map[string]string, error) {
+func readAuthorsByUsername(pairs io.Reader) (map[string]string, error) {
 	var authorMap map[string]string
 
 	bytes, err := ioutil.ReadAll(pairs)
@@ -315,12 +307,9 @@ func ReadAuthorsByUsername(pairs io.Reader) (map[string]string, error) {
 	return authorMap, nil
 }
 
-// EmailAddressForUsernames generates an email address from a list of usernames.
+// emailAddressForUsernames generates an email address from a list of usernames.
 // For example, given "michael" and "lindsay" returns "michael+lindsay".
-func EmailAddressForUsernames(emailTemplate string, usernames []string) (string, error) {
-	var user string
-	var host string
-
+func emailAddressForUsernames(emailTemplate string, usernames []string) (string, error) {
 	user, host, err := SplitEmail(emailTemplate)
 	if err != nil {
 		return "", err
@@ -336,14 +325,14 @@ func EmailAddressForUsernames(emailTemplate string, usernames []string) (string,
 	}
 }
 
-// NamesForUsernames joins names corresponding to usernames with " and ".
+// namesForUsernames joins names corresponding to usernames with " and ".
 // For example, given "michael" and "lindsay" returns "Michael Bluth and Lindsay Bluth".
-func NamesForUsernames(usernames []string, authorMap map[string]string) (string, error) {
+func namesForUsernames(usernames []string, authorMap map[string]string) (string, error) {
 	if len(usernames) == 0 {
 		return "", nil
 	}
 
-	names := make([]string, 0, 0)
+	var names []string
 
 	for _, username := range usernames {
 		name, ok := authorMap[username]
