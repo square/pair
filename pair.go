@@ -20,35 +20,36 @@ var branch = flag.String("b", "", "switch to this branch prefixed with the curre
 
 func init() {
 	flag.Usage = func() {
-		fmt.Println("pair USER1 [USER2 [...]]")
-		fmt.Println("pair [OPTIONS]")
-		fmt.Println("")
-		fmt.Println("Configures your git author and committer info by changing ~/.gitconfig_local.")
-		fmt.Println("This is meant to be used both as a means of adding multiple authors to a commit")
-		fmt.Println("and an alternative to editing your ~/.git_config (which is checked into git).")
-		fmt.Println("")
-		fmt.Println("Options")
-		fmt.Println("")
-		fmt.Println("  -b BRANCH     Switches to a git branch prefixed with the paired usernames.")
-		fmt.Println("")
-		fmt.Println("Examples")
-		fmt.Println("")
-		fmt.Println("  # configure paired git author info for this shell")
-		fmt.Println("  $ pair jsmith alice")
-		fmt.Println("  Alice Barns and Jon Smith <git+alice+jsmith@example.com>")
-		fmt.Println("")
-		fmt.Println("  # use the same author info as the last time pair was run")
-		fmt.Println("  $ pair")
-		fmt.Println("  Alice Barns and Jon Smith <git+alice+jsmith@example.com>")
-		fmt.Println("")
-		fmt.Println("  # create a branch to work on a feature")
-		fmt.Println("  $ pair -b ONCALL-843")
-		fmt.Println("  Switched to a new branch 'alice+jsmith/ONCALL-843'")
-		fmt.Println("")
-		fmt.Println("Configuration")
-		fmt.Println("")
-		fmt.Println("  PAIR_FILE        YAML file with a map of usernames to full names (default: ~/.pairs).")
-		fmt.Println("  PAIR_GIT_CONFIG  Git config file for reading and writing author info (default: ~/.gitconfig).")
+		fmt.Println(
+			`pair USER1 [USER2 [...]]
+pair [OPTIONS]
+
+Configures your git author and committer info by changing ~/.gitconfig_local.
+This is meant to be used both as a means of adding multiple authors to a commit
+and an alternative to editing your ~/.git_config (which is checked into git).
+
+Options
+
+  -b BRANCH     Switches to a git branch prefixed with the paired usernames.
+
+Examples
+
+  # configure paired git author info for this shell
+  $ pair jsmith alice
+  Alice Barns and Jon Smith <git+alice+jsmith@example.com>
+
+  # use the same author info as the last time pair was run
+  $ pair
+  Alice Barns and Jon Smith <git+alice+jsmith@example.com>
+
+  # create a branch to work on a feature
+  $ pair -b ONCALL-843
+  Switched to a new branch 'alice+jsmith/ONCALL-843'
+
+Configuration
+
+  PAIR_FILE        YAML file with a map of usernames to full names (default: ~/.pairs).
+  PAIR_GIT_CONFIG  Git config file for reading and writing author info (default: ~/.gitconfig).`)
 
 		defaultEmailTemplate, err := GetDefaultEmailTemplate()
 		if err == nil {
