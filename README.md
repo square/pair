@@ -21,7 +21,7 @@ Lindsay Bluth and Michael Bluth <git+lb+mb@example.com>
 # Set the current git author according to your user, perhaps useful in .bashrc.
 $ pair $USER
 
-# create a branch to work on a feature
+# Create a branch to work on a feature.
 $ pair -b ONCALL-843
 Switched to a new branch 'alice+jsmith/ONCALL-843'
 ```
