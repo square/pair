@@ -73,9 +73,3 @@ $ go get gopkg.in/yaml.v1
 
 Then, use `go build` and `go test` as normal to build the `pair` binary and run
 tests.
-
-### Contributing
-
-1. Create a branch for your bugfix/feature.
-1. Commit to your branch, ensuring you add tests to cover the bug/feature.
-1. Create a Pull Request with a thorough description of the bug/feature.
